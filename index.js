@@ -26,21 +26,48 @@ can be ignored and don't interfere with the intended functionality
 **/
 
 const Game = require('./Game.js');
+var Options = require('./Options.js');
 
-	
+
+// entry point and container for entire game. handles communication with console, starting/ending/restarting game, and options
 class App {
 	constructor() { 
-		this.inputCB = null;
-		this.game;
-		this.listen();
+		this.inputCB = null; // function to be called when user enters input
+		this.game; // the actual game
+		this.listen(); // starts listening for console input
+        this.options = this.createOptions() // options object that displays options and handles their execution when selected
 	}
 	
-	newGame() {
-		this.game = new Game(this);
-		this.game.startGame();
+    // create a fresh game and start it
+	newGameVsHuman() {
+      this.game = new Game(this, 'Human');
+      this.game.startGame();
 	}
+  
+    newGameVsBot() {
+      this.game = new Game(this, 'Bot');
+      this.game.startGame();
+    }
+  
 	
-			
+    // creates options object, adds options to it, then returns it
+    createOptions() {
+      var options = new Options();
+      options.addOption(6, "New Game Vs. Human", this.newGameVsHuman.bind(this));
+      options.addOption(7, "New Game Vs. AI", this.newGameVsBot.bind(this));
+      options.addOption(8, "Exit Game", this.close.bind(this));
+      
+      return options;
+    }
+	
+    renderOptions() {
+      this.options.renderOptions();
+    }
+  
+    // add a win to the scoreboard
+    addWin(mark) {
+      this.options.addWin(mark);
+    }
 	/**
 	*	starts listening for input on the console. Sends all user-entered input to inputCB, passing it in as a Number parameter
 	**/
@@ -48,10 +75,23 @@ class App {
 		// add event listener to the stdin stream
 		process.stdin.on('data', (response) => {
 			// call the input callback with the users input when the event is triggered
-			this.inputCB(Number(response));
+			this.input(response);
 		});
 	}
 	
+    /**
+    * All input goes through this function before being handled by anything else.
+    * convert val to number, then try to execute an option based on the input, if input isn't an option val then call inputCB
+    **/
+    input(val) {
+      val = Number(val);
+      if (this.options.try(val)) {
+        // do nothing, options is handling the input
+      } else {
+        // call the inputCB
+        this.inputCB(val);
+      }
+    }
 	
 	/**
 	*	sets inputCB - the function which will be called each time a user enters input after listen() is called
@@ -70,4 +110,4 @@ class App {
 }
 
 var app = new App();
-app.newGame();
+app.newGameVsHuman();

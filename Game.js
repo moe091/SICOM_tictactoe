@@ -7,15 +7,21 @@ var BotPlayer = require('./BotPlayer.js');
 	Game controls the actual gameplay. It houses the main game loop, the players, and the board, and controls the flow of the game
 **/
 class Game {
-	constructor(app) {
+	constructor(app, opponentType) {
 		this.app = app;
 		this.board = new Board();
 		this.inputCB; 
 		this.playerX = new HumanPlayer(this);
-		this.playerO = new BotPlayer(this);
+		this.opponentType = opponentType;
+        if (opponentType == 'Bot') {
+          this.playerO = new BotPlayer(this);
+        } else if (opponentType == 'Human') {
+          this.playerO = new HumanPlayer(this);
+        }
 		this.currentPlayer;
 	}
 	
+
 	/**
 	*	starts the game: starts listening for input, initializes both players and sets playerX as the first currentPlayer, calls startTurn to enter the game loop
 	**/
@@ -33,6 +39,8 @@ class Game {
 	**/
 	startTurn() { 
 		this.clearConsole();
+        this.app.renderOptions();
+        process.stdout.write("\n\n\n" + "Human Vs " + this.opponentType + "\n");
 		this.board.renderBoard();
 		process.stdout.write("\n\nPlayer " + this.currentPlayer.mark + "'s Turn:\n");
 		
@@ -57,7 +65,6 @@ class Game {
 			// if the current players move is not valid, notify the player and ask for their move again
 			} else {
 				this.invalidMove();
-              console.log("move = ", move);
 				this.getMove();
 			}
 		});
@@ -100,7 +107,8 @@ class Game {
 		// clear the console and render the board to show the end state
 		this.clearConsole();
 		this.board.renderBoard();
-		
+        if (winningPlayer != null) // no need to add win if game was a tie
+		  this.app.addWin(winningPlayer.mark);
 		// print the Game Over message:
 	 	process.stdout.write("****************************************************\n");
 		if (winningPlayer == null) // if there is no winning player, print the Tie Game message
@@ -118,7 +126,11 @@ class Game {
 	askNewGame() {
 		this.getInputs("would you like to play again?\n(1) - Yes\n(2) - No\n\n").then((input) => {
 			if (input == 1) { // start a new game if the user enters 1
-				this.app.newGame();
+              if (this.opponentType == 'Bot') {
+                this.app.newGameVsBot();
+              } else if (this.opponentType == 'Human') {
+                this.app.newGameVsHuman();
+              }
 			} else if (input == 2) { // stop the process if the user enters 2
 				this.app.close();
 			} else { // if the users input is invalid(not 1 or 2), inform them that their input wasn't valid and ask again
