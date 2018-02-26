@@ -2,7 +2,7 @@ var Board = require('./Board.js');
 var Game = require('./Game.js');
 
 
-class HumanPlayer {
+class Player {
 	constructor(game) {
 		this.game = game;
 		this.mark;
@@ -26,20 +26,34 @@ class HumanPlayer {
 		this.isWinner = false;
 	}
 	
+	// where the player attempts to make a move and returns it an array of length 2([0] = row, [1] = col). Should be implemented by child class
 	requestMove(makeMove) { 
-		return this.game.getInputs("Select A Row: ", "Select A Column: "); 
+		
 	} 
 	
 
+	/**
+	* function for calculating if a player has won the game in constant time, updates the score by including the latest move and recalculating values for the win-state check, sets isWinner to true if player has won
+	* adds 1 to the corresponding element of colScore, 1 to the corresponding element of rowScore, and the corresponding diagScore(s) if any.
+	* if any rowScore, colScore, or diagScore adds up to 3, then the player has won and isWinner is set to true
+	*
+	* this doesn't check for the same move being added multiple times, because that shouldn't be able to happen in a single game(if it does, there is a problem somewhere else)
+	* 
+	* @param row Number - the row of the move being added to the score
+	* @param col Number - the column of the move being added to the score
+	**/
 	updateScore(row, col) { 
+		// throw an error if the move is invalid
 		if (row > 2 || row < 0 || col > 2 || col < 0) {
 			throw Error("row and col must both be between 0 and 2(inclusive), got " + row + " and " + col);
 		}
+		
+		// rowScores[n] corresponds to the 'n'th row, so add 1 to the number who's index equals the row in which the move took place
 		this.rowScores[row]++;
 		if (this.rowScores[row] == 3)
 			this.isWinner = true;
 		
-		
+		// add 1 to the column in which the move took place
 		this.colScores[col]++;
 		if (this.colScores[col] == 3)
 			this.isWinner = true;
@@ -61,4 +75,4 @@ class HumanPlayer {
 }
 
 
-module.exports = HumanPlayer;
+module.exports = Player;

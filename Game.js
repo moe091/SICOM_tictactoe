@@ -1,24 +1,25 @@
 var Board = require('./Board.js');
 var HumanPlayer = require('./HumanPlayer.js');
+var BotPlayer = require('./BotPlayer.js');
 
 
 /**
 	Game controls the actual gameplay. It houses the main game loop, the players, and the board, and controls the flow of the game
 **/
 class Game {
-	constructor() {
+	constructor(app) {
+		this.app = app;
 		this.board = new Board();
 		this.inputCB; 
 		this.playerX = new HumanPlayer(this);
-		this.playerO = new HumanPlayer(this);
+		this.playerO = new BotPlayer(this);
 		this.currentPlayer;
 	}
 	
 	/**
 	*	starts the game: starts listening for input, initializes both players and sets playerX as the first currentPlayer, calls startTurn to enter the game loop
 	**/
-	startGame() {
-		this.listen();
+	startGame() { 
 		this.playerX.initPlayer("X");
 		this.playerO.initPlayer("O");
 		
@@ -44,7 +45,7 @@ class Game {
 	**/
 	getMove() {
 		// ask the current player for their move
-		this.currentPlayer.requestMove().then((move) => {
+		this.currentPlayer.requestMove(this.board).then((move) => {
 			//shift row and col down by 1 before doing anything to convert the user input into correct array indices
 			let row = move[0] - 1;
 			let col = move[1] - 1;
@@ -56,6 +57,7 @@ class Game {
 			// if the current players move is not valid, notify the player and ask for their move again
 			} else {
 				this.invalidMove();
+              console.log("move = ", move);
 				this.getMove();
 			}
 		});
@@ -101,45 +103,31 @@ class Game {
 		
 		// print the Game Over message:
 	 	process.stdout.write("****************************************************\n");
-		
 		if (winningPlayer == null) // if there is no winning player, print the Tie Game message
 			process.stdout.write("**********--- Game Has Ended In A Tie ---***********\n");
 		else											 // if there is a winning player, print a message declaring that player the winner
 			process.stdout.write("***************--- Player " + winningPlayer.mark + " Has Won ---*************\n");
+	 	process.stdout.write("****************************************************\n\n\n\n");
 		
-	 	process.stdout.write("****************************************************\n");
+		this.askNewGame();
 	}
-		
+	
 	/**
-	*	starts listening for input on the console. Sends all user-entered input to inputCB, passing it in as a Number parameter
+	* Asks the player if they want to start a new game. If yes, start a new game. If no, exit the game
 	**/
-	listen() {
-		// add event listener to the stdin stream
-		process.stdin.on('data', (response) => {
-			// call the input callback with the users input when the event is triggered
-			this.inputCB(Number(response));
+	askNewGame() {
+		this.getInputs("would you like to play again?\n(1) - Yes\n(2) - No\n\n").then((input) => {
+			if (input == 1) { // start a new game if the user enters 1
+				this.app.newGame();
+			} else if (input == 2) { // stop the process if the user enters 2
+				this.app.close();
+			} else { // if the users input is invalid(not 1 or 2), inform them that their input wasn't valid and ask again
+				process.stdout.write("\nInvalid Response, try again");
+				this.askNewGame();
+			}
 		});
 	}
-		
-	/**
-	*	optionally prints a message to the user and then returns the users input
-	*
-	* @param prompt String - the message to be displayed to the user, pass empty string or leave null to leave no message
-	* 
-	* @return Promise(Number) - a promise that resolves to a string once the user enters some input
-	**/
-	getInput(prompt) {
-		if (prompt) // if there is a prompt, print it to the user
-			process.stdout.write(prompt);
-		
-		// return a promise that sets the input callback, and then resolves with the users input when the input callback is called
-		return new Promise((resolve, reject) => {
-			// sets game.inputCB to a function that resolves this promise when it is called
-			this.setInputCallback((input) => { 
-				resolve(input);
-			});
-		});
-	}
+
 	
 	/**
 	*	optionally prints multiple messages to the user, accepting one input for each message, and returns the users inputs
@@ -159,7 +147,7 @@ class Game {
 				process.stdout.write(prompts.shift()); // remove the first prompt and print it to the console
 			
 			
-			this.setInputCallback((input) => { // executed when an input is received:
+			this.app.setInputCallback((input) => { // executed when an input is received:
 				answers.push(input);
 				if (prompts.length == 0) { // if there are no prompts left to display, resolve the promise with the array of inputs
 					resolve(answers);
@@ -171,18 +159,10 @@ class Game {
 		});
 	}
 	
-	/**
-	*	sets inputCB - the function which will be called each time a user enters input after listen() is called
-	* 
-	* @param cb Function() - the function to be called when user enters input, will be passed the users input as a parameter
-	**/
-	setInputCallback(cb) {
-		this.inputCB = cb;
-	}
+
 	
-	/**
-	*	clears the console
-	**/
+
+	// clears the console
 	clearConsole() { 
 		// set lines to the number of lines in the console window at its current size
 		var lines = process.stdout.getWindowSize()[1];
